@@ -1,0 +1,251 @@
+/*基本信息表身高，体重，年龄，性别 */
+options validvarname=any;/*导入数据，确定可以使用中文变量 */
+proc import datafile = "C:\Users\GaryHo\Desktop
+\LJ_jibenxinxi.xlsx" dbms = excel out = test;
+sheet = "sheet1";
+run;
+
+data test;
+set test;
+drop 总检日期  体检编号  出生日期    总检日期    是否有问卷数据    是否有体检数据    是否有骨密度数据;性别 /*删除不要的变量列 只保留ID  年龄   身高    体重 */   
+run;
+
+proc export data =test /*导出数据*/
+outfile = "C:\Users\GaryHo\Desktop\SAS_jibenxinxi.xlsx"
+dbms = xlsx replace;
+sheet = 'sheet1' ;
+run;
+
+/*腰椎骨密度表 */
+
+options validvarname=any;
+proc import datafile ="C:\Users\GaryHo\Desktop\LSBMD.xlsx"
+dbms = excel out = test;sheet = "sheet1";
+run;
+
+proc sql;
+create table test1 as select 体检编号,TOT_BMD,SPINE_T from test where 体检编号 >600000000000;
+quit;
+
+proc export data =test1 /*导出数据*/
+outfile = "C:\Users\GaryHo\Desktop\SAS_LSBMD.xlsx"
+dbms = xlsx replace;
+sheet = 'sheet1' ;
+run;
+
+/*腰椎骨密度表 */
+
+options validvarname=any;
+proc import datafile ="C:\Users\GaryHo\Desktop\LSBMD.xlsx"
+dbms = excel out = test;sheet = "sheet1";
+run;
+
+proc sql;
+create table test1 as select 体检编号,TOT_BMD,SPINE_T from test where 体检编号 >600000000000;
+quit;
+
+proc export data =test1 /*导出数据*/
+outfile = "C:\Users\GaryHo\Desktop\SAS_LSBMD.xlsx"
+dbms = xlsx replace;
+sheet = 'sheet1' ;
+run;
+
+
+/*腰椎骨密度表 */
+
+options validvarname=any;
+proc import datafile ="C:\Users\GaryHo\Desktop\LSBMD.xlsx"
+dbms = excel out = test;sheet = "sheet1";
+run;
+
+proc sql;
+create table test1 as select 体检编号,TOT_BMD,SPINE_T from test where 体检编号 >600000000000;
+quit;
+
+proc export data =test1 /*导出数据*/
+outfile = "C:\Users\GaryHo\Desktop\SAS_LSBMD.xlsx"
+dbms = xlsx replace;
+sheet = 'sheet1' ;
+run;
+
+/*五张表内连结，所有需要用的信息已经有了。现在开始数据处理清洗部分*/
+proc sql;
+creat table test1 as
+select * from SAS_LSBMD1 as a inner join  
+Sas_shenghua1 as b on a.ID=b.ID
+inner join  
+SAS_HipBMD1 as c on a.ID=c.ID
+inner join  
+Sas_jibenxinxi1 as d on d.ID=a.ID;
+inner join jibingwenjuan1 as e on e.id=a.id;
+quit;
+
+proc export data =test1 /*导出数据*/
+outfile = "C:\Users\GaryHo\Desktop\zhenglihao.xlsx"
+dbms = xlsx replace;
+sheet = 'sheet1' ;
+run;
+数值型数据清理：
+
+/*删除重复值，可以借鉴笔记 SAS重复值部分/
+
+
+
+/*用freq统计某变量的值重复的情况，并且可以用来检查*/
+proc freq data = test noprint ;
+    table ID/  out =Nodups6 (keep = ID Count where = (Count > 1)) ;
+run ;
+
+proc sort data = test  out=_unique dupout = _dups 
+nodupkey ;
+by ID;
+run ;
+
+/*检查,如何没有显示即成功*/
+proc freq data = _unique noprint ;
+    table ID/  out =Nodups6 (keep = ID Count where = (Count > 1)) ;
+run ;
+
+/*missing缺失值处理*/
+
+data missing;
+set test;
+array a _numeric_;
+do over a;
+if missing(a) then output;
+end;
+array b _character_;
+do over b;
+if missing(b) then output;
+end;
+run;
+
+
+/*missing缺失值处理*/
+
+data missing;
+set test;
+array a _numeric_;
+do over a;
+if missing(a) then output;
+end;
+array b _character_;
+do over b;
+if missing(b) then output;
+end;
+run;
+
+
+/*与ALT，AST偏相关情况 */
+PROC corr pearson  ;
+var ALT AST age sex height weight    BMI wc hipline    WHR HTOT_BMD LS_BMD;
+run;
+
+
+/*与ALT，AST偏相关情况，校正男女 */
+PROC corr pearson  ;
+var ALT AST  height weight    BMI wc hipline    WHR HTOT_BMD LS_BMD;
+PARTIAL age sex;
+run;
+
+/*与ALT，AST偏相关情况 */
+PROC corr pearson  ;
+var ALT AST age sex height weight    BMI wc hipline    WHR HTOT_BMD LS_BMD;
+run;
+
+
+/*与ALT，AST偏相关情况，校正男女 */
+PROC corr pearson  ;
+var ALT AST  height weight    BMI wc hipline    WHR HTOT_BMD LS_BMD;
+PARTIAL age sex;
+run;
+
+/*分男女，与ALT，AST与hip BMD 回归模型 */
+
+proc sort data=test;
+by sex;
+run;
+
+proc reg;
+model HTOT_BMD=ALT  age  /stb ;
+run;
+proc reg;
+model HTOT_BMD=ALT WC  age  /stb ;
+run;
+proc reg;
+model HTOT_BMD=ALT BMi  age  /stb ;
+run;
+proc reg;
+model HTOT_BMD=ALT BMi WC age  /stb ;
+run;
+
+/*分男女，与ALT，AST与LS BMD 回归模型 */
+proc reg;
+model LS_BMD=ALT  age  /stb ;
+run;
+proc reg;
+model LS_BMD=ALT WC  age  /stb ;
+run;
+proc reg;
+model LS_BMD=ALT BMi  age  /stb ;
+run;
+proc reg;
+model LS_BMD=ALT BMi WC  age  /stb vif collin;
+run;
+
+/*将BMI分组，
+与ALT，AST与LS BMD 回归模型 */
+
+proc sort data=test;
+by BMIgroup;
+run;
+
+
+proc reg;
+model HTOT_BMD=ALT sex age  /stb ;
+by BMIgroup;
+run;
+
+proc reg;
+model HTOT_BMD=ALT sex age wc /stb ;
+by BMIgroup;
+run;
+
+proc reg;
+model LS_BMD=ALT sex age  /stb ;
+by BMIgroup;
+run;
+
+proc reg;
+model LS_BMD=ALT sex age  wc /stb ;
+by BMIgroup;
+run;
+
+/*将BMI分组，男女
+与ALT，AST与LS BMD 回归模型 */
+
+proc sql;
+create table test_women as
+select * from test where sex=0;
+quit;
+
+
+proc reg;
+model HTOT_BMD=ALT  age  /stb ;
+by BMIgroup;
+run;
+
+proc reg;
+model HTOT_BMD=ALT  age wc /stb ;
+by BMIgroup;
+run;
+
+proc reg;
+model LS_BMD=ALT  age  /stb ;
+by BMIgroup;
+run;
+
+proc reg;
+model LS_BMD=ALT  age  wc /stb ;
+by BMIgroup;
+run;
