@@ -1,0 +1,38 @@
+proc import datafile = "F:\aOB and OP\second part\17shishanbuchonghou\data\17shishanbuchonghou.xlsx" dbms = excel out = file;
+sheet = "sheet1";
+run;
+/*ÕûÌå  È«÷Å*/
+/* pre 1: sex+age+PFM  pre 3: sex+age+PFM+LAP*/		
+
+proc logistic data=file plots=roc(id=prob);
+   model HTOT_OP(event='1') = sex age PFM LAP / nofit;
+   roc 'first1' sex age PFM;
+   roc 'first2' sex age PFM LAP;
+   roccontrast reference('first1') / estimate e;
+run;
+
+%include "F:\aOB and OP\second part\17shishanbuchonghou\add_predictive.sas";
+%include "F:\aOB and OP\second part\17shishanbuchonghou\hoslem.sas"; 
+
+data file;
+ set file;
+ cnt+1;
+run;
+
+proc logistic data=file plots=roc;
+   model HTOT_OP(event='1') = sex age PFM;
+   output out=m1 pred=p1;
+run;
+
+proc logistic data=file plots=roc;
+   model HTOT_OP(event='1') = sex age PFM LAP;
+   output out=m2 pred=p2;
+run;
+
+proc sql;
+	create table m as select *
+	from m1 as a left join m2 as b on a.cnt=b.cnt;
+quit;
+
+%add_predictive(data=m, y=HTOT_OP, p_old=p1 , p_new=p2, nripoints=%str(),hoslemgrp=10)
+
